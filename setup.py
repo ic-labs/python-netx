@@ -22,12 +22,11 @@
 # SOFTWARE.
 #
 from setuptools import setup, find_packages
-from .netx import __version__
 
 
 setup(
     name='netx',
-    version='0.1.0',
+    version='0.1',
     url='https://github.com/ixc/python-netx',
     author='Addy Yeow',
     author_email='addy@interaction.net.au',
