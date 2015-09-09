@@ -189,7 +189,7 @@ class NetX(object):
         nonce = response.get('id', None)
         if nonce != self.sent_nonce:
             raise ResponseError(
-                'Mismatched nonce: %s != %s' % nonce, self.sent_nonce)
+                'Mismatched nonce: %s != %s' % (nonce, self.sent_nonce))
         return response
 
     def login(self):
