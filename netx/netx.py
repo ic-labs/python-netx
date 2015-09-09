@@ -245,7 +245,7 @@ class NetX(object):
             })
         return categories
 
-    def category_assets(self, category_path, page_num=1):
+    def category_assets(self, category_path, page_num=1, filters=None):
         """
         Sends searchAssetBeanObjects command to list assets in the given
         category. Results are paginated.
@@ -258,36 +258,54 @@ class NetX(object):
         start_index = ((page_num - 1) * self.assets_per_page) + 1
 
         values_1 = '/'.join([entry['name'] for entry in category_path][1:])
+
+        # Example filters to exclude assets with:
+        # 'ask Source Department' = 'Can SFMOMA use it?'
+        # filters = [
+        #     [
+        #         SEARCH_TYPE_CATEGORY,
+        #         SEARCH_TYPE_METADATA,
+        #     ],                          # types
+        #     [
+        #         CATEGORY_TYPE_ONLY,
+        #         QUERY_TYPE_NOT,
+        #     ],                          # sub-types 1
+        #     [0, 0],                     # sub-types 2
+        #     [
+        #         values_1,
+        #         'ask Source Department',
+        #     ],                          # values 1 (path to category)
+        #     [
+        #         '',
+        #         'Can SFMOMA use it?',
+        #     ],                          # values 2
+        #     ['', ''],                   # values 3
+        # ]
+        if filters is None:  # Use default filters
+            filters = [
+                [SEARCH_TYPE_CATEGORY],     # types
+                [CATEGORY_TYPE_ONLY],       # sub-types 1
+                [0],                        # sub-types 2
+                [values_1],                 # values 1 (path to category)
+                [''],                       # values 2
+                [''],                       # values 3
+            ]
+
+        params = [
+            'name',                     # sort by name
+            SORT_ORDER_DESCENDING,
+            QUERY_TYPE_AND,
+        ] + filters + [
+            None,                       # name of saved search
+            NOTIFY_TYPE_NONE,
+            0,                          # don't record in stats
+            start_index,
+            self.assets_per_page,
+        ]
+
         context = {
             'method': 'searchAssetBeanObjects',
-            'params': [
-                'name',                     # sort by name
-                SORT_ORDER_DESCENDING,
-                QUERY_TYPE_AND,
-                [
-                    SEARCH_TYPE_CATEGORY,
-                    SEARCH_TYPE_METADATA,
-                ],                          # types
-                [
-                    CATEGORY_TYPE_ONLY,
-                    QUERY_TYPE_NOT,
-                ],                          # sub-types 1
-                [0, 0],                     # sub-types 2
-                [
-                    values_1,
-                    'ask Source Department',
-                ],                          # values 1 (path to category)
-                [
-                    '',
-                    'Can SFMOMA use it?',
-                ],                          # values 2
-                ['', ''],                   # values 3
-                None,                       # name of saved search
-                NOTIFY_TYPE_NONE,
-                0,                          # don't record in stats
-                start_index,
-                self.assets_per_page,
-            ],
+            'params': params,
         }
         response = self._json_post(context=context)
         return response.get('result')
@@ -303,88 +321,128 @@ class NetX(object):
         response = self._json_post(context=context)
         return response.get('result')
 
-    def cart_assets(self, cart_id, page_num=1):
+    def cart_assets(self, cart_id, page_num=1, filters=None):
         """
         Sends searchAssetBeanObjects command to list assets in the given cart.
         Results are paginated.
         """
         start_index = ((page_num - 1) * self.assets_per_page) + 1
 
+        # Example filters to exclude assets with:
+        # 'ask Source Department' = 'Can SFMOMA use it?'
+        # filters = [
+        #     [
+        #         SEARCH_TYPE_CART,
+        #         SEARCH_TYPE_METADATA,
+        #     ],                              # types
+        #     [
+        #         QUERY_TYPE_AND_FRAG,
+        #         QUERY_TYPE_NOT,
+        #     ],                              # sub-types 1
+        #     [0, 0],                         # sub-types 2
+        #     [
+        #         cart_id,
+        #         'ask Source Department',
+        #     ],                              # values 1 (cart ID)
+        #     [
+        #         '',
+        #         'Can SFMOMA use it?',
+        #     ],                              # values 2
+        #     ['', ''],                       # values 3
+        # ]
+        if filters is None:  # Use default filters
+            filters = [
+                [SEARCH_TYPE_CART],             # types
+                [QUERY_TYPE_AND_FRAG],          # sub-types 1
+                [0],                            # sub-types 2
+                [cart_id],                      # values 1 (cart ID)
+                [''],                           # values 2
+                [''],                           # values 3
+            ]
+
+        params = [
+            'name',                     # sort by name
+            SORT_ORDER_DESCENDING,
+            QUERY_TYPE_AND,
+        ] + filters + [
+            None,                       # name of saved search
+            NOTIFY_TYPE_NONE,
+            0,                          # don't record in stats
+            start_index,
+            self.assets_per_page,
+        ]
+
         context = {
             'method': 'searchAssetBeanObjects',
-            'params': [
-                'name',                         # sort by name
-                SORT_ORDER_DESCENDING,
-                QUERY_TYPE_AND,
-                [
-                    SEARCH_TYPE_CART,
-                    SEARCH_TYPE_METADATA,
-                ],                              # types
-                [
-                    QUERY_TYPE_AND_FRAG,
-                    QUERY_TYPE_NOT,
-                ],                              # sub-types 1
-                [0, 0],                         # sub-types 2
-                [
-                    cart_id,
-                    'ask Source Department',
-                ],                              # values 1 (cart ID)
-                [
-                    '',
-                    'Can SFMOMA use it?',
-                ],                              # values 2
-                ['', ''],                       # values 3
-                None,                           # name of saved search
-                NOTIFY_TYPE_NONE,
-                0,                              # don't record in stats
-                start_index,
-                self.assets_per_page,
-            ],
+            'params': params,
         }
         response = self._json_post(context=context)
         return response.get('result')
 
-    def search(self, keyword, page_num=1):
+    def search(self, keyword, page_num=1, filters=None):
         """
         Sends searchAssetBeanObjects command to search assets based on the
         given keyword. Results are paginated.
         """
         start_index = ((page_num - 1) * self.assets_per_page) + 1
 
-        context = {
-            'method': 'searchAssetBeanObjects',
-            'params': [
-                'name',                         # sort by name
-                SORT_ORDER_DESCENDING,
-                QUERY_TYPE_AND,
+        # Example filters to exclude assets with:
+        # 'ask Source Department' = 'Can SFMOMA use it?'
+        # filters = [
+        #     [
+        #         SEARCH_TYPE_KEYWORDS,
+        #         SEARCH_TYPE_THESAURUS,
+        #         SEARCH_TYPE_METADATA,
+        #     ],                              # types
+        #     [
+        #         QUERY_TYPE_AND_FRAG,
+        #         QUERY_TYPE_OR,
+        #         QUERY_TYPE_NOT,
+        #     ],                              # sub-types 1
+        #     [0, 0, 0],                      # sub-types 2
+        #     [
+        #         keyword,
+        #         keyword,
+        #         'ask Source Department',
+        #     ],                              # values 1 (keywords)
+        #     [
+        #         '',
+        #         '',
+        #         'Can SFMOMA use it?',
+        #     ],                              # values 2
+        #     ['', '', ''],                   # values 3
+        # ]
+        if filters is None:  # Use default filters
+            filters = [
                 [
                     SEARCH_TYPE_KEYWORDS,
                     SEARCH_TYPE_THESAURUS,
-                    SEARCH_TYPE_METADATA,
                 ],                              # types
                 [
                     QUERY_TYPE_AND_FRAG,
                     QUERY_TYPE_OR,
-                    QUERY_TYPE_NOT,
                 ],                              # sub-types 1
-                [0, 0, 0],                      # sub-types 2
-                [
-                    keyword,
-                    keyword,
-                    'ask Source Department',
-                ],                              # values 1 (keywords)
-                [
-                    '',
-                    '',
-                    'Can SFMOMA use it?',
-                ],                              # values 2
-                ['', '', ''],                   # values 3
-                None,                           # name of saved search
-                NOTIFY_TYPE_NONE,
-                0,                              # don't record in stats
-                start_index,
-                self.assets_per_page,
-            ],
+                [0, 0],                         # sub-types 2
+                [keyword, keyword],             # values 1 (keywords)
+                ['', ''],                       # values 2
+                ['', ''],                       # values 3
+            ]
+
+        params = [
+            'name',                     # sort by name
+            SORT_ORDER_DESCENDING,
+            QUERY_TYPE_AND,
+        ] + filters + [
+            None,                       # name of saved search
+            NOTIFY_TYPE_NONE,
+            0,                          # don't record in stats
+            start_index,
+            self.assets_per_page,
+        ]
+
+        context = {
+            'method': 'searchAssetBeanObjects',
+            'params': params,
         }
         response = self._json_post(context=context)
         return response.get('result')
