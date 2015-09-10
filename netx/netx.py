@@ -124,6 +124,12 @@ class NetX(object):
             self._user = self.get_user()
         return self._user
 
+    def _restore_connection(self):
+        delattr(self, '_session_key')
+        delattr(self, '_user')
+        _ = self.session_key
+        _ = self.user
+
     def _nonce(self):
         """
         Generates and returns a new nonce for use in JSON-RPC calls.
@@ -158,7 +164,7 @@ class NetX(object):
                 '%s returned HTTP%d' % (url, response.status_code))
         return response
 
-    def _json_post(self, context):
+    def _json_post(self, context, retries=3):
         """
         Wraps HTTP POST request with the specified data. Returns dict decoded
         from the JSON response.
@@ -190,6 +196,19 @@ class NetX(object):
         if nonce != self.sent_nonce:
             raise ResponseError(
                 'Mismatched nonce: %s != %s' % nonce, self.sent_nonce)
+
+        # Reraise exception returned by origin server
+        error = response.get('error', None)
+        if error:
+            msg = '%s returned %s, self.user=%s, self.session_key=%s' % (
+                url, error, self.user, self.session_key)
+            # Retry if we have a stale connection
+            if context['method'] != 'authenticate' and retries > 1:
+                self._restore_connection()
+                self._json_post(context, retries=retries - 1)
+            else:
+                raise ResponseError(msg)
+
         return response
 
     def login(self):
