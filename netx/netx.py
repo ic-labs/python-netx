@@ -194,12 +194,10 @@ class NetX(object):
         response = response.json()
         nonce = response.get('id', None)
         if nonce != self.sent_nonce:
-            raise ResponseError("""Mismatched nonce: %s != %s
-Request:  %s
-Response: %s"""
-                % (nonce, self.sent_nonce, data, response)
-            )
-
+            raise ResponseError(
+                'Mismatched nonce: %s != %s\n'
+                'Request: %s\n'
+                'Response: %s' % (nonce, self.sent_nonce, data, response))
         # Reraise exception returned by origin server
         error = response.get('error', None)
         if error:
@@ -402,27 +400,21 @@ Response: %s"""
         return response.get('result')
 
     def get_asset_info(self, asset_id):
-
+        """
+        Sends getAssetBean command to get asset info with `attributeNames` and
+        `attributeValues` appearing in key-value format instead of two separate
+        lists.
+        """
         context = {
             'method': 'getAssetBean',
             'params': [asset_id],
         }
-
         response = self._json_post(context=context)
-
         result = response.get('result', {})
-
-        attrs = dict(
-            zip(
-                result['attributeNames'],
-                result['attributeValues']
-            )
-        )
-
+        attrs = dict(zip(result['attributeNames'], result['attributeValues']))
         del result['attributeNames']
         del result['attributeValues']
         result['attributes'] = attrs
-
         return result
 
     def search(self, keyword, page_num=1, filters=None):
