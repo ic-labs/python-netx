@@ -158,7 +158,7 @@ class NetX(object):
             'sessionKey': self.session_key,
         }
         response = requests.get(
-            url, headers=headers, params=params, cookies=cookies)
+            url, headers=headers, params=params, cookies=cookies, verify=False)
         if response.status_code != 200:
             raise ResponseError(
                 '%s returned HTTP%d' % (url, response.status_code))
@@ -187,7 +187,7 @@ class NetX(object):
             'content-type': 'application/json',
         }
         response = requests.post(
-            url, headers=headers, data=data, cookies=cookies)
+            url, headers=headers, data=data, cookies=cookies, verify=False)
         if response.status_code != 200:
             raise ResponseError(
                 '%s returned HTTP%d' % (url, response.status_code))
