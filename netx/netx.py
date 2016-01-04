@@ -5,6 +5,8 @@ Backend implementation for NetX Digital Asset Management.
 import json
 import random
 import requests
+from datetime import date
+
 from . import __version__
 
 DEFAULT_ASSETS_PER_PAGE = 10
@@ -158,7 +160,7 @@ class NetX(object):
             'sessionKey': self.session_key,
         }
         response = requests.get(
-            url, headers=headers, params=params, cookies=cookies)
+            url, headers=headers, params=params, cookies=cookies, verify=False)
         if response.status_code != 200:
             raise ResponseError(
                 '%s returned HTTP%d' % (url, response.status_code))
@@ -187,19 +189,17 @@ class NetX(object):
             'content-type': 'application/json',
         }
         response = requests.post(
-            url, headers=headers, data=data, cookies=cookies)
+            url, headers=headers, data=data, cookies=cookies, verify=False)
         if response.status_code != 200:
             raise ResponseError(
                 '%s returned HTTP%d' % (url, response.status_code))
         response = response.json()
         nonce = response.get('id', None)
         if nonce != self.sent_nonce:
-            raise ResponseError("""Mismatched nonce: %s != %s
-Request:  %s
-Response: %s"""
-                % (nonce, self.sent_nonce, data, response)
-            )
-
+            raise ResponseError(
+                'Mismatched nonce: %s != %s\n'
+                'Request: %s\n'
+                'Response: %s' % (nonce, self.sent_nonce, data, response))
         # Reraise exception returned by origin server
         error = response.get('error', None)
         if error:
@@ -402,27 +402,21 @@ Response: %s"""
         return response.get('result')
 
     def get_asset_info(self, asset_id):
-
+        """
+        Sends getAssetBean command to get asset info with `attributeNames` and
+        `attributeValues` appearing in key-value format instead of two separate
+        lists.
+        """
         context = {
             'method': 'getAssetBean',
             'params': [asset_id],
         }
-
         response = self._json_post(context=context)
-
         result = response.get('result', {})
-
-        attrs = dict(
-            zip(
-                result['attributeNames'],
-                result['attributeValues']
-            )
-        )
-
+        attrs = dict(zip(result['attributeNames'], result['attributeValues']))
         del result['attributeNames']
         del result['attributeValues']
         result['attributes'] = attrs
-
         return result
 
     def search(self, keyword, page_num=1, filters=None):
@@ -492,6 +486,61 @@ Response: %s"""
         }
         response = self._json_post(context=context)
         return response.get('result')
+
+    def find_images_for_web(self, modified_since=None, start=0):
+        """
+        Sends searchAssetBeanObjects command to get images for web in chunks.
+        Returns a generator.
+
+        Advanced search criteria on netx.sfmoma.org/app:
+        [Attributes] [=] [Web Status] [OK for online collection API]
+        """
+        if modified_since is None:
+            modified_since = '1900-01-01'
+        elif isinstance(modified_since, date):
+            modified_since = modified_since.isoformat()
+        print 'modified_since=%s' % modified_since
+
+        while True:
+            context = {
+                'method': 'searchAssetBeanObjects',
+                'params': [
+                    'name',                                 # sortField
+                    SORT_ORDER_ASCENDING,                   # sortOrder
+                    QUERY_TYPE_AND,                         # matchCriteria
+                    [
+                        SEARCH_TYPE_METADATA,
+                        SEARCH_TYPE_DATE,
+                    ],                                      # elementTypes
+                    [
+                        QUERY_TYPE_AND_FRAG,
+                        QUERY_TYPE_EXACT,
+                    ],                                      # elementSubType1s
+                    [0, 5],                                 # elementSubType2s
+                    [
+                        'OK for online collection API',
+                        modified_since,
+                    ],                                      # elementValue1s
+                    [
+                        'Web Status',
+                        '',
+                    ],                                      # elementValue2s
+                    ['', ''],                               # elementValue3s
+                    None,                                   # saveSearch
+                    NOTIFY_TYPE_NONE,                       # notifyType
+                    0,                                      # ignoreStat
+                    start,                                  # startPosition
+                    self.assets_per_page,                   # maxItems
+                ],
+            }
+            print 'searching: %s' % context
+            response = self._json_post(context=context)
+            result = response.get('result')
+            if len(result):
+                yield result
+                start += self.assets_per_page
+            else:
+                break
 
     def file(self, asset_id, data='zoom'):
         """
