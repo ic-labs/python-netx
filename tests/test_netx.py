@@ -13,10 +13,12 @@ class NetXTests(unittest.TestCase):
         self.username = os.environ.get('NETX_USERNAME')
         self.password = os.environ.get('NETX_PASSWORD')
         self.url = os.environ.get('NETX_URL')
+        self.assets_per_page = os.environ.get('ASSETS_PER_PAGE')
         config = {
             'URL': self.url,
             'USERNAME': self.username,
             'PASSWORD': self.password,
+            'ASSETS_PER_PAGE': int(self.assets_per_page),
         }
         self.api = NetX(config)
 
@@ -90,6 +92,7 @@ class NetXTests(unittest.TestCase):
 
     def test_get_asset_info(self):
         asset = self.api.category_assets(self.category_path)[0]
+
         asset_info = self.api.get_asset_info(asset.get('assetId'))
         asset_info_keys = set(asset_info.keys())
         self.assertFalse('attributeNames' in asset_info_keys)
@@ -97,19 +100,100 @@ class NetXTests(unittest.TestCase):
         required_asset_info_keys = set([
             'assetId',
             'creationdate',
+            'file',
             'filesize',
             'filetypelabel',
+            'moddate',
             'name',
             'thumbUrl',
         ])
         self.assertTrue(required_asset_info_keys.issubset(asset_info_keys))
 
+        attributes = asset_info.get('attributes')
+        attributes_keys = set(attributes.keys())
+        required_attributes_keys = set([
+            'Artwork Image View',
+            'Can SFMOMA use it?',
+            'Can use it - notes',
+            'Copyright',
+            'Credit Line',
+            'Preferred for publication?',
+            'Source Department',
+        ])
+        self.assertTrue(required_attributes_keys.issubset(attributes_keys))
+
     def test_search(self):
         keyword = 'test'
         assets = self.api.search(keyword)
-        self.assertTrue(len(assets) == 10)
+        self.assertTrue(len(assets) == self.api.assets_per_page)
         for asset in assets:
             self.assertTrue('test' in str(asset).lower())
+
+    def test_find_images_for_web(self):
+        pages = 0
+        for page in self.api.find_images_for_web():
+            pages += 1
+            accessions = set()
+            for asset in page:
+                attributes = dict(zip(
+                    asset['attributeNames'],
+                    asset['attributeValues']
+                ))
+                attributes_keys = set(attributes.keys())
+                required_attributes_keys = set([
+                    'Artist Sort Name',
+                    'Artist',
+                    'ARTstor Status',
+                    'Artwork Accession Number',
+                    'Artwork Collection',
+                    'Artwork Date',
+                    'Artwork Dimensions',
+                    'Artwork EmbARK ID',
+                    'Artwork Image View',
+                    'Artwork Medium',
+                    'Artwork Subject',
+                    'Artwork Temp ID',
+                    'Artwork Title',
+                    'Artwork Type',
+                    'Can SFMOMA use it?',
+                    'Can use it - notes',
+                    'Category',
+                    'Copyright',
+                    'Credit Line',
+                    'Descriptive Text',
+                    'Descriptive Title',
+                    'EMA Closure',
+                    'Event or Activity Date',
+                    'Exhibition EmbARK ID',
+                    'Exhibition Name',
+                    'Lab Number',
+                    'Lighting',
+                    'Media Type',
+                    'Mod Date Time',
+                    'Notes',
+                    'People',
+                    'Photographer/Videographer',
+                    'Preferred for publication?',
+                    'Resource Type',
+                    'SFMOMA Location',
+                    'Source Date',
+                    'Source Department',
+                    'Source Other',
+                    'Tags',
+                    'Use History',
+                    'Web Status',
+                ])
+                self.assertTrue(
+                    required_attributes_keys.issubset(attributes_keys))
+                accession_number = \
+                    attributes.get('Artwork Accession Number') or \
+                    attributes.get('Artwork Temp ID')
+                if accession_number:
+                    accessions.add(accession_number)
+            self.assertTrue(len(accessions) > 0)
+            # Test up to 3 pages.
+            if pages == 3:
+                break
 
     def test_file(self):
         asset = self.api.category_assets(self.category_path)[0]

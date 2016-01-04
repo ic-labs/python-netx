@@ -5,6 +5,8 @@ Backend implementation for NetX Digital Asset Management.
 import json
 import random
 import requests
+from datetime import date
+
 from . import __version__
 
 DEFAULT_ASSETS_PER_PAGE = 10
@@ -484,6 +486,61 @@ class NetX(object):
         }
         response = self._json_post(context=context)
         return response.get('result')
+
+    def find_images_for_web(self, modified_since=None, start=0):
+        """
+        Sends searchAssetBeanObjects command to get images for web in chunks.
+        Returns a generator.
+
+        Advanced search criteria on netx.sfmoma.org/app:
+        [Attributes] [=] [Web Status] [OK for online collection API]
+        """
+        if modified_since is None:
+            modified_since = '1900-01-01'
+        elif isinstance(modified_since, date):
+            modified_since = modified_since.isoformat()
+        print 'modified_since=%s' % modified_since
+
+        while True:
+            context = {
+                'method': 'searchAssetBeanObjects',
+                'params': [
+                    'name',                                 # sortField
+                    SORT_ORDER_ASCENDING,                   # sortOrder
+                    QUERY_TYPE_AND,                         # matchCriteria
+                    [
+                        SEARCH_TYPE_METADATA,
+                        SEARCH_TYPE_DATE,
+                    ],                                      # elementTypes
+                    [
+                        QUERY_TYPE_AND_FRAG,
+                        QUERY_TYPE_EXACT,
+                    ],                                      # elementSubType1s
+                    [0, 5],                                 # elementSubType2s
+                    [
+                        'OK for online collection API',
+                        modified_since,
+                    ],                                      # elementValue1s
+                    [
+                        'Web Status',
+                        '',
+                    ],                                      # elementValue2s
+                    ['', ''],                               # elementValue3s
+                    None,                                   # saveSearch
+                    NOTIFY_TYPE_NONE,                       # notifyType
+                    0,                                      # ignoreStat
+                    start,                                  # startPosition
+                    self.assets_per_page,                   # maxItems
+                ],
+            }
+            print 'searching: %s' % context
+            response = self._json_post(context=context)
+            result = response.get('result')
+            if len(result):
+                yield result
+                start += self.assets_per_page
+            else:
+                break
 
     def file(self, asset_id, data='zoom'):
         """
