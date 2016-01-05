@@ -573,3 +573,81 @@ class NetX(object):
         url = self.root_url + '/file/asset/' + str(asset_id) + '/' + data
         headers, content = self._get(url, stream=stream)
         return (headers, content)
+
+    def prepare_asset(self, asset_id, preset=2):
+        """
+        Sends repurposeAssetsWithPresetProcess command to initiate creation
+        of large JPEG file (preset=2) for the asset on origin server.
+        Returns True if job is started successfully.
+        """
+        context = {
+            'method': 'repurposeAssetsWithPresetProcess',
+            'params': [
+                [asset_id],  # asset ids
+                [],          # other ids
+                preset,      # preset id, 2 for 'Large JPEG (5x7)'
+                '',          # download override, e.g. 'thumb', 'preview'
+            ],
+        }
+        response = self._json_post(context=context)
+        result = response.get('result', {})
+        return result
+
+    def progress(self):
+        """
+        Sends getProgressReport command to get progress of the last job, e.g.
+        triggered by repurposeAssetsWithPresetProcess command. Returns dict
+        containing the progress.
+
+        Example:
+        {
+            'completeUrl': '',
+            'details': 'Processing (1/1) : 0.0%',
+            'estimatedTime': '',
+            'increment': 0,
+            'jobTitle': 'Processing Asset',
+            'notifyOnComplete': False,
+            'percentComplete': 0,
+            'runningTime': 0,
+            'runningTimeLabel': '',
+            'secondsToReload': 0,
+            'startTime': 1451979500852,
+            'userId': 0
+        }
+        """
+        context = {
+            'method': 'getProgressReport',
+            'params': [0],
+        }
+        response = self._json_post(context=context)
+        result = response.get('result', {})
+        return result
+
+    def get_prepared_asset(self):
+        """
+        Sends getShareBean command to get prepared asset. Returns dict
+        containing path to download the prepared asset.
+
+        Example:
+        {
+            'appendMetadata': True,
+            'errorCatastrophe': '',
+            'errorMessage': '',
+            'fileSize': 93336,
+            'hoursToLive': 24,
+            'messages': [],
+            'name': 'PGPH03.144 01_d04.jpg',
+            'path': '/session/22901041f9a54bebddf385bba147ed03/PGPH03.144%2001_d04.jpg',
+            'realPath': 'M:\\appFiles\\session\\22901041f9a54bebddf385bba147ed03\\PGPH03.144 01_d04.jpg',
+            'size': '93 KB',
+            'sizeUncompressed': '93 KB',
+            'warningMessage': ''
+        }
+        """
+        context = {
+            'method': 'getShareBean',
+            'params': [],
+        }
+        response = self._json_post(context=context)
+        result = response.get('result', {})
+        return result
