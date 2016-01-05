@@ -1,4 +1,5 @@
 import os
+import time
 import unittest
 from netx import NetX
 
@@ -209,6 +210,26 @@ class NetXTests(unittest.TestCase):
         self.assertEqual(
             len(original_content), int(headers.get('Content-Length')))
         self.assertTrue(len(original_content) > len(content))
+
+    def test_prepare_jpeg(self):
+        asset = self.api.category_assets(self.category_path)[0]
+
+        job_started = self.api.prepare_asset(asset.get('assetId'))
+        self.assertTrue(job_started)
+
+        percent = 0
+        while percent < 100:
+            progress = self.api.progress()
+            percent = progress.get('percentComplete')
+            time.sleep(0.2)
+
+        result = self.api.get_prepared_asset()
+        jpeg_name = result.get('name')
+        self.assertTrue(jpeg_name.endswith('.jpg'))
+        self.assertEqual(asset.get('name'), jpeg_name.rstrip('.jpg'))
+        path = result.get('path')
+        self.assertTrue(len(path) > 0)
+
 
 if __name__ == '__main__':
     unittest.main()
