@@ -197,9 +197,18 @@ class NetXTests(unittest.TestCase):
 
     def test_file(self):
         asset = self.api.category_assets(self.category_path)[0]
+
         headers, content = self.api.file(asset.get('assetId'))
         self.assertEqual(len(content), int(headers.get('Content-Length')))
 
+        headers, content = self.api.file(asset.get('assetId'), stream=True)
+        self.assertEqual(len(content), int(headers.get('Content-Length')))
+
+        headers, original_content = \
+            self.api.file(asset.get('assetId'), data='original')
+        self.assertEqual(
+            len(original_content), int(headers.get('Content-Length')))
+        self.assertTrue(len(original_content) > len(content))
 
 if __name__ == '__main__':
     unittest.main()
