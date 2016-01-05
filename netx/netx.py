@@ -3,8 +3,10 @@ Backend implementation for NetX Digital Asset Management.
 """
 
 import json
+import logging
 import random
 import requests
+from contextlib import closing
 from datetime import date
 
 from . import __version__
@@ -67,6 +69,8 @@ NOTIFY_TYPE_NONE = 0
 NOTIFY_TYPE_WEEKLY = 1
 NOTIFY_TYPE_DAILY = 2
 NOTIFY_TYPE_IMMEDIATELY = 3
+
+LOGGER = logging.getLogger(__name__)
 
 
 class SettingsError(Exception):
@@ -148,7 +152,7 @@ class NetX(object):
             raise SettingsError("URL is not set in settings.")
         return self.api_url
 
-    def _get(self, url, params=None):
+    def _get(self, url, params=None, **kwargs):
         """
         Wraps HTTP GET request with the specified params. Returns the HTTP
         response.
@@ -159,12 +163,24 @@ class NetX(object):
         cookies = {
             'sessionKey': self.session_key,
         }
-        response = requests.get(
-            url, headers=headers, params=params, cookies=cookies, verify=False)
-        if response.status_code != 200:
-            raise ResponseError(
-                '%s returned HTTP%d' % (url, response.status_code))
-        return response
+        kwargs.update(dict(
+            headers=headers,
+            params=params,
+            cookies=cookies,
+            verify=False,
+        ))
+        response_headers = None
+        response_content = None
+        with closing(requests.get(url, **kwargs)) as response:
+            if response.status_code != 200:
+                raise ResponseError(
+                    '%s returned HTTP%d' % (url, response.status_code))
+            if kwargs.get('stream'):
+                filesize = float(response.headers['content-length']) / 1024
+                LOGGER.info('streaming %s: %.2fKB', url, filesize)
+            response_headers = response.headers
+            response_content = response.content  # Read or stream now.
+        return (response_headers, response_content)
 
     def _json_post(self, context, retries=3):
         """
@@ -499,7 +515,7 @@ class NetX(object):
             modified_since = '1900-01-01'
         elif isinstance(modified_since, date):
             modified_since = modified_since.isoformat()
-        print 'modified_since=%s' % modified_since
+        LOGGER.info('modified_since=%s', modified_since)
 
         while True:
             context = {
@@ -533,7 +549,7 @@ class NetX(object):
                     self.assets_per_page,                   # maxItems
                 ],
             }
-            print 'searching: %s' % context
+            LOGGER.info('searching: %s', context)
             response = self._json_post(context=context)
             result = response.get('result')
             if len(result):
@@ -542,7 +558,7 @@ class NetX(object):
             else:
                 break
 
-    def file(self, asset_id, data='zoom'):
+    def file(self, asset_id, data='zoom', stream=False):
         """
         Downloads the asset using file command. Asset must be an image.
         Returns a tuple containing the response header and content of the file
@@ -555,5 +571,5 @@ class NetX(object):
         4) zoom - the zoom file for the Asset (default is 2000 pixels)
         """
         url = self.root_url + '/file/asset/' + str(asset_id) + '/' + data
-        response = self._get(url)
-        return (response.headers, response.content)
+        headers, content = self._get(url, stream=stream)
+        return (headers, content)
