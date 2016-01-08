@@ -3,8 +3,6 @@ from __future__ import print_function
 import setuptools
 import sys
 
-version = '0.1.dev1'
-
 # Convert README.md to reStructuredText.
 if {'bdist_wheel', 'sdist'}.intersection(sys.argv):
     try:
@@ -20,9 +18,9 @@ if {'bdist_wheel', 'sdist'}.intersection(sys.argv):
 
 setuptools.setup(
     name='netx',
-    version=version,
-    author='Addy Yeow',
-    author_email='addy@interaction.net.au',
+    use_scm_version={'version_scheme': 'post-release'},
+    author='Interaction Consortium',
+    author_email='studio@interaction.net.au',
     url='https://github.com/ixc/python-netx',
     description='Python wrapper for NetX Digital Asset Management API.',
     long_description=locals().get('long_description', ''),
@@ -32,6 +30,7 @@ setuptools.setup(
     install_requires=[
         'requests',
     ],
+    setup_requires=['setuptools_scm'],
     keywords=[
         'netx',
         'dma',
