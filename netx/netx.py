@@ -6,6 +6,7 @@ import json
 import logging
 import random
 import requests
+import time
 from contextlib import closing
 from datetime import date
 requests.packages.urllib3.disable_warnings()
@@ -14,6 +15,7 @@ from . import __version__
 
 DEFAULT_ASSETS_PER_PAGE = 10
 DEFAULT_TIMEOUT = 60  # Requests timeout in seconds
+DEFAULT_REQUESTS_PER_SECOND = 1
 
 #
 # Constants for JSON-RPC X7 API
@@ -114,10 +116,13 @@ class NetX(object):
         self.assets_per_page = settings.get(
             'ASSETS_PER_PAGE', DEFAULT_ASSETS_PER_PAGE)
         self.timeout = settings.get('TIMEOUT', DEFAULT_TIMEOUT)
+        self.requests_per_second = settings.get(
+            'REQUESTS_PER_SECOND', DEFAULT_REQUESTS_PER_SECOND)
         data_type = settings.get('DATA_TYPE', 'x7/json/')
         self.label = self.__class__.__name__.lower()
         self.sent_nonce = None  # For use in JSON-RPC calls
         self.api_url = None
+        self.last_request = None  # Epoch in ms for use to limit requests/sec
         if self.root_url:
             self.api_url = '%s/%s' % (self.root_url, data_type)
 
@@ -155,6 +160,21 @@ class NetX(object):
             raise SettingsError("URL is not set in settings.")
         return self.api_url
 
+    def _requests_limiter(self):
+        """
+        Limit number of outgoing requests per second.
+        """
+        if self.last_request is None:
+            return
+        rps = float(self.requests_per_second)
+        min_elapsed_ms = 1000 / rps
+        elapsed_ms = 0
+        while elapsed_ms < min_elapsed_ms:
+            time.sleep(0.001)  # Sleep for 1 ms
+            now_ms = int(time.time() * 1000)
+            elapsed_ms = now_ms - self.last_request
+        return
+
     def _get(self, url, params=None, **kwargs):
         """
         Wraps HTTP GET request with the specified params. Returns the HTTP
@@ -175,10 +195,12 @@ class NetX(object):
         ))
         response_headers = None
         response_content = None
+        self._requests_limiter()
         with closing(requests.get(url, **kwargs)) as response:
             if response.status_code != 200:
                 raise ResponseError(
                     '%s returned HTTP%d' % (url, response.status_code))
+            self.last_request = int(time.time() * 1000)
             if kwargs.get('stream'):
                 filesize = float(response.headers['content-length']) / 1024
                 LOGGER.info('streaming %s: %.2fKB', url, filesize)
@@ -210,6 +232,7 @@ class NetX(object):
         }
 
         # Retry if we get intermittent connection error
+        self._requests_limiter()
         try:
             response = requests.post(
                 url, headers=headers, data=data, cookies=cookies, verify=False,
@@ -224,6 +247,7 @@ class NetX(object):
         if response.status_code != 200:
             raise ResponseError(
                 '%s returned HTTP%d' % (url, response.status_code))
+        self.last_request = int(time.time() * 1000)
         response = response.json()
         nonce = response.get('id', None)
         if nonce != self.sent_nonce:
