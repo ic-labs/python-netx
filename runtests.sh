@@ -4,7 +4,7 @@
 # upgraded NetX test server to ensure the new NetX version is working as
 # expected for this module.
 #
-# Example: ./runtests.sh -u USERNAME -p PASSWORD -s netxtest.sfmoma.org
+# Example: ./runtests.sh -u USERNAME -p PASSWORD -s http://netxtest.sfmoma.org
 #
 usage()
 {
@@ -14,7 +14,7 @@ Test NetX API calls against a test server. Run these tests against a newly
 upgraded NetX test server to ensure the new NetX version is working as
 expected for this module.
 
-Usage: $0 [-h] [-u <username>] [-p <password>] [-s <server>] [-a <assets_per_page>]
+Usage: $0 [-h] [-u <username>] [-p <password>] [-s <url>] [-a <assets_per_page>]
 
 -h
     Print usage.
@@ -25,8 +25,8 @@ Usage: $0 [-h] [-u <username>] [-p <password>] [-s <server>] [-a <assets_per_pag
 -p <password>
     NetX password.
 
--s <server>
-    NetX hostname.
+-s <url>
+    NetX server URL.
 
 -a <assets_per_page>
     Assets per page (optional).
@@ -47,7 +47,7 @@ do
             password=${OPTARG}
             ;;
         s)
-            server=${OPTARG}
+            url=${OPTARG}
             ;;
         a)
             assets_per_page=${OPTARG}
@@ -59,7 +59,7 @@ do
     esac
 done
 
-if [ -z ${username} ] || [ -z ${password} ] || [ -z ${server} ]
+if [ -z ${username} ] || [ -z ${password} ] || [ -z ${url} ]
 then
     usage
     exit 1
@@ -72,12 +72,12 @@ fi
 
 echo "username = ${username}"
 echo "password = ${password}"
-echo "server = ${server}"
+echo "url = ${url}"
 echo "assets_per_page = ${assets_per_page}"
 
 export NETX_USERNAME="${username}"
 export NETX_PASSWORD="${password}"
-export NETX_URL="http://${server}"
+export NETX_URL="${url}"
 export ASSETS_PER_PAGE="${assets_per_page}"
 
 python -m unittest tests.test_netx
