@@ -8,10 +8,12 @@ import random
 import requests
 from contextlib import closing
 from datetime import date
+requests.packages.urllib3.disable_warnings()
 
 from . import __version__
 
 DEFAULT_ASSETS_PER_PAGE = 10
+DEFAULT_TIMEOUT = 60  # Requests timeout in seconds
 
 #
 # Constants for JSON-RPC X7 API
@@ -111,6 +113,7 @@ class NetX(object):
         self.password = settings.get('PASSWORD', None)
         self.assets_per_page = settings.get(
             'ASSETS_PER_PAGE', DEFAULT_ASSETS_PER_PAGE)
+        self.timeout = settings.get('TIMEOUT', DEFAULT_TIMEOUT)
         data_type = settings.get('DATA_TYPE', 'x7/json/')
         self.label = self.__class__.__name__.lower()
         self.sent_nonce = None  # For use in JSON-RPC calls
@@ -168,6 +171,7 @@ class NetX(object):
             params=params,
             cookies=cookies,
             verify=False,
+            timeout=self.timeout,
         ))
         response_headers = None
         response_content = None
@@ -204,8 +208,19 @@ class NetX(object):
             'user-agent': 'python-netx/%s' % __version__,
             'content-type': 'application/json',
         }
-        response = requests.post(
-            url, headers=headers, data=data, cookies=cookies, verify=False)
+
+        # Retry if we get intermittent connection error
+        try:
+            response = requests.post(
+                url, headers=headers, data=data, cookies=cookies, verify=False,
+                timeout=self.timeout)
+        except requests.exceptions.ConnectionError as err:
+            if context['method'] != 'authenticate' and retries > 1:
+                LOGGER.info('retry (%d): %s', retries - 1, context)
+                self._json_post(context, retries=retries - 1)
+            else:
+                raise ResponseError(err)
+
         if response.status_code != 200:
             raise ResponseError(
                 '%s returned HTTP%d' % (url, response.status_code))

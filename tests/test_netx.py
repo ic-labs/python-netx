@@ -144,7 +144,6 @@ class NetXTests(unittest.TestCase):
                 required_attributes_keys = set([
                     'Artist Sort Name',
                     'Artist',
-                    'ARTstor Status',
                     'Artwork Accession Number',
                     'Artwork Collection',
                     'Artwork Date',
