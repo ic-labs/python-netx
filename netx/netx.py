@@ -690,3 +690,13 @@ class NetX(object):
         response = self._json_post(context=context)
         result = response.get('result', {})
         return result
+
+    def get_prepared_asset_content(self, path):
+        """
+        Downloads the prepared asset denoted by `path`. The asset must be an image.
+
+        Returns a tuple containing the response header and content of the file
+        in bytes.
+        """
+        url = self.root_url + path
+        return self._get(url)
