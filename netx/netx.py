@@ -697,6 +697,31 @@ class NetX(object):
 
         Returns a tuple containing the response header and content of the file
         in bytes.
+
+        Usage example:
+        ```
+            prepared_asset = api.get_prepared_asset()
+            prepared_asset_path = prepared_asset['path']
+            original_headers, original_content = api.get_prepared_asset_content(prepared_asset_path)
+        ```
         """
         url = self.root_url + path
         return self._get(url)
+
+    def get_preset_process_ids(self):
+        context = {
+            'method': 'getAllPresetProcesses',
+            'params': []
+        }
+
+        response = self._json_post(context=context)
+        return response['result']
+
+    def get_preset_process_data(self, preset_id):
+        context = {
+            'method': 'getPresetProcessData',
+            'params': [preset_id]
+        }
+
+        response = self._json_post(context=context)
+        return response['result']
