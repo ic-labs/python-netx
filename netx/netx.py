@@ -597,6 +597,9 @@ class NetX(object):
             else:
                 break
 
+    def file_url(self, asset_id, data='zoom'):
+        return self.root_url + '/file/asset/' + str(asset_id) + '/' + data
+
     def file(self, asset_id, data='zoom', stream=False):
         """
         Downloads the asset using file command. Asset must be an image.
@@ -609,7 +612,7 @@ class NetX(object):
         3) preview - the preview of the Asset (500 pixels)
         4) zoom - the zoom file for the Asset (default is 2000 pixels)
         """
-        url = self.root_url + '/file/asset/' + str(asset_id) + '/' + data
+        url = self.file_url(asset_id, data)
         headers, content = self._get(url, stream=stream)
         return (headers, content)
 
