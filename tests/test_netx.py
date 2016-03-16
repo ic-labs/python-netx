@@ -213,7 +213,7 @@ class NetXTests(unittest.TestCase):
     def test_prepare_jpeg(self):
         asset = self.api.category_assets(self.category_path)[0]
 
-        job_started = self.api.prepare_asset(asset.get('assetId'))
+        job_started = self.api.prepare_asset_with_preset(asset.get('assetId'))
         self.assertTrue(job_started)
 
         percent = 0

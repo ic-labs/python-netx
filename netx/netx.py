@@ -616,7 +616,7 @@ class NetX(object):
         headers, content = self._get(url, stream=stream)
         return (headers, content)
 
-    def prepare_asset(self, asset_id, preset=2):
+    def prepare_asset_with_preset(self, asset_id, preset=2):
         """
         Sends repurposeAssetsWithPresetProcess command to initiate creation
         of large JPEG file (preset=2) for the asset on origin server.
@@ -629,6 +629,25 @@ class NetX(object):
                 [],          # other ids
                 preset,      # preset id, 2 for 'Large JPEG (5x7)'
                 '',          # download override, e.g. 'thumb', 'preview'
+            ],
+        }
+        response = self._json_post(context=context)
+        result = response.get('result', {})
+        return result
+
+    def prepare_asset_with_params(self, asset_id, params, values):
+        """
+        Sends repurposeAssetsWithPresetProcess command to initiate creation
+        of large JPEG file (preset=2) for the asset on origin server.
+        Returns True if job is started successfully.
+        """
+        context = {
+            'method': 'repurposeAssets',
+            'params': [
+                [asset_id],  # asset ids
+                [],          # other ids
+                params,      # ex: ['height', 'dpi']
+                values,      # ex: [1000, 300]
             ],
         }
         response = self._json_post(context=context)
