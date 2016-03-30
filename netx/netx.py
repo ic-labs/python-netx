@@ -610,7 +610,7 @@ class NetX(object):
         1) original - the Asset original file.
         2) thumb - the thumbnail of the Asset (150 pixels)
         3) preview - the preview of the Asset (500 pixels)
-        4) zoom - the zoom file for the Asset (default is 2000 pixels)
+        4) zoom - the zoom file for the Asset (default is 1000 pixels)
         """
         url = self.file_url(asset_id, data)
         headers, content = self._get(url, stream=stream)
@@ -641,6 +641,22 @@ class NetX(object):
         of large JPEG file (preset=2) for the asset on origin server.
         Returns True if job is started successfully.
         """
+        # first check whether repurpose is available
+        context = {
+            'method': 'getAssetObjects',
+            'params': [[asset_id]],
+        }
+        response = self._json_post(context=context)
+        result = response.get('result', {})
+        try:
+            can_repurpose = result[0]['repurposeAvailability']
+        except (KeyError, IndexError):
+            raise ResponseError("NetX did not tell me whether it can repurpose asset %s" % asset_id)
+
+        if not can_repurpose:
+            # inject "HTTP405" so as to trigger deletion in the ResponseError catcher
+            raise ResponseError("Pseudo HTTP405: Repurpose of asset %s not available (usually because the image isn't available)" % asset_id)
+
         context = {
             'method': 'repurposeAssets',
             'params': [
@@ -652,6 +668,9 @@ class NetX(object):
         }
         response = self._json_post(context=context)
         result = response.get('result', {})
+        if not result:
+            # inject "HTTP403" so as to trigger deletion in the ResponseError catcher
+            raise ResponseError("Pseudo HTTP403: NetX did not want to repurpose asset %s" % asset_id)
         return result
 
     def progress(self):
@@ -713,7 +732,7 @@ class NetX(object):
         result = response.get('result', {})
         return result
 
-    def get_prepared_asset_content(self, path):
+    def get_prepared_asset_content(self, path, stream=True):
         """
         Downloads the prepared asset denoted by `path`. The asset must be an image.
 
@@ -728,7 +747,7 @@ class NetX(object):
         ```
         """
         url = self.root_url + path
-        return self._get(url)
+        return self._get(url, stream=stream)
 
     def get_preset_process_ids(self):
         context = {
