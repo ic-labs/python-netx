@@ -263,7 +263,7 @@ class NetX(object):
             # Retry if we have a stale connection
             if context['method'] != 'authenticate' and retries > 1:
                 self._restore_connection()
-                self._json_post(context, retries=retries - 1)
+                return self._json_post(context, retries=retries - 1)
             else:
                 raise ResponseError(msg)
 
