@@ -8,7 +8,6 @@ import random
 import requests
 import time
 from contextlib import closing
-from datetime import date
 requests.packages.urllib3.disable_warnings()
 
 from . import __version__
@@ -96,10 +95,6 @@ class NetX(object):
     Implements the API endpoints for this backend.
 
     Target URL: http://API_URL/DATA_TYPE
-
-    API_URL
-    1) http://netx.sfmoma.org (production)
-    2) http://netxtest.sfmoma.org (staging)
 
     DATA_TYPE
     1) json/x7/ (JSON-RPC X7 API, IN DRAFT)
@@ -337,7 +332,7 @@ class NetX(object):
         values_1 = '/'.join([entry['name'] for entry in category_path][1:])
 
         # Example filters to exclude assets with:
-        # 'ask Source Department' = 'Can SFMOMA use it?'
+        # '<some filter value>' = '<some filter>'
         # filters = [
         #     [
         #         SEARCH_TYPE_CATEGORY,
@@ -350,11 +345,11 @@ class NetX(object):
         #     [0, 0],                     # sub-types 2
         #     [
         #         values_1,
-        #         'ask Source Department',
+        #         '<some filter value>',
         #     ],                          # values 1 (path to category)
         #     [
         #         '',
-        #         'Can SFMOMA use it?',
+        #         '<some filter>',
         #     ],                          # values 2
         #     ['', ''],                   # values 3
         # ]
@@ -406,7 +401,7 @@ class NetX(object):
         start_index = ((page_num - 1) * self.assets_per_page) + 1
 
         # Example filters to exclude assets with:
-        # 'ask Source Department' = 'Can SFMOMA use it?'
+        # '<some filter value>' = '<some filter>'
         # filters = [
         #     [
         #         SEARCH_TYPE_CART,
@@ -419,11 +414,11 @@ class NetX(object):
         #     [0, 0],                         # sub-types 2
         #     [
         #         cart_id,
-        #         'ask Source Department',
+        #         '<some filter value>',
         #     ],                              # values 1 (cart ID)
         #     [
         #         '',
-        #         'Can SFMOMA use it?',
+        #         '<some filter>',
         #     ],                              # values 2
         #     ['', ''],                       # values 3
         # ]
@@ -482,7 +477,7 @@ class NetX(object):
         start_index = ((page_num - 1) * self.assets_per_page) + 1
 
         # Example filters to exclude assets with:
-        # 'ask Source Department' = 'Can SFMOMA use it?'
+        # '<some filter value>' = '<some filter>'
         # filters = [
         #     [
         #         SEARCH_TYPE_KEYWORDS,
@@ -498,12 +493,12 @@ class NetX(object):
         #     [
         #         keyword,
         #         keyword,
-        #         'ask Source Department',
+        #         '<some filter value>',
         #     ],                              # values 1 (keywords)
         #     [
         #         '',
         #         '',
-        #         'Can SFMOMA use it?',
+        #         '<some filter>',
         #     ],                              # values 2
         #     ['', '', ''],                   # values 3
         # ]
@@ -541,61 +536,6 @@ class NetX(object):
         }
         response = self._json_post(context=context)
         return response.get('result')
-
-    def find_images_for_web(self, modified_since=None, start=0):
-        """
-        Sends searchAssetBeanObjects command to get images for web in chunks.
-        Returns a generator.
-
-        Advanced search criteria on netx.sfmoma.org/app:
-        [Attributes] [=] [Web Status] [OK for online collection API]
-        """
-        if modified_since is None:
-            modified_since = '1900-01-01'
-        elif isinstance(modified_since, date):
-            modified_since = modified_since.isoformat()
-        LOGGER.info('modified_since=%s', modified_since)
-
-        while True:
-            context = {
-                'method': 'searchAssetBeanObjects',
-                'params': [
-                    'name',                                 # sortField
-                    SORT_ORDER_ASCENDING,                   # sortOrder
-                    QUERY_TYPE_AND,                         # matchCriteria
-                    [
-                        SEARCH_TYPE_METADATA,
-                        SEARCH_TYPE_DATE,
-                    ],                                      # elementTypes
-                    [
-                        QUERY_TYPE_AND_FRAG,
-                        QUERY_TYPE_EXACT,
-                    ],                                      # elementSubType1s
-                    [0, 5],                                 # elementSubType2s
-                    [
-                        'OK for online collection API',
-                        modified_since,
-                    ],                                      # elementValue1s
-                    [
-                        'Web Status',
-                        '',
-                    ],                                      # elementValue2s
-                    ['', ''],                               # elementValue3s
-                    None,                                   # saveSearch
-                    NOTIFY_TYPE_NONE,                       # notifyType
-                    0,                                      # ignoreStat
-                    start,                                  # startPosition
-                    self.assets_per_page,                   # maxItems
-                ],
-            }
-            LOGGER.info('searching: %s', context)
-            response = self._json_post(context=context)
-            result = response.get('result')
-            if len(result):
-                yield result
-                start += self.assets_per_page
-            else:
-                break
 
     def file_url(self, asset_id, data='zoom'):
         return self.root_url + '/file/asset/' + str(asset_id) + '/' + data

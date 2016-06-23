@@ -4,7 +4,7 @@
 # upgraded NetX test server to ensure the new NetX version is working as
 # expected for this module.
 #
-# Example: ./runtests.sh -u USERNAME -p PASSWORD -s http://netxtest.sfmoma.org
+# Example: ./runtests.sh -u USERNAME -p PASSWORD -s http://example.com
 #
 usage()
 {
